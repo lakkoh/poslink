@@ -165,6 +165,8 @@ dependencies = [
     "qrcode[pil]",
     "Pillow",
     "python-escpos",
+    "pyusb",
+    "pyserial",
 ]
 ```
 
