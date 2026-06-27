@@ -45,6 +45,7 @@ poslink --device usb --no-print --label "" "https://example.com"
 | `net:HOST:PORT` | `--device net:10.0.0.5:9101` | Сетевой принтер, свой порт |
 | `serial:PORT` | `--device serial:COM3` | COM-порт (9600 бод) |
 | `serial:PORT:BAUD` | `--device serial:/dev/ttyUSB0:19200` | COM-порт, свой baudrate |
+| `win:PORT` | `--device win:USB001` | Прямой вывод в порт Windows (без libusb) |
 | `/path/to/device` | `--device /dev/usb/lp0` | Файл устройства (Linux) |
 
 ### Параметры изображения
@@ -184,9 +185,9 @@ python poslink.py --device ... "https://..."
 
 ## Совместимость
 
-| ОС | USB | Network | Serial | Bluetooth* |
-|---|---|---|---|---|
-| Linux | ✓ (libusb) | ✓ | ✓ | ✓ (через serial) |
-| Windows | ✓ (WinUSB) | ✓ | ✓ | ✓ (через serial) |
+| ОС | USB (pyusb) | USB (win:) | Network | Serial | Bluetooth* |
+|---|---|---|---|---|---|
+| Linux | ✓ (libusb) | — | ✓ | ✓ | ✓ (через serial) |
+| Windows | ✓ (libusb-package) | ✓ (напрямую) | ✓ | ✓ | ✓ (через serial) |
 
 \* Bluetooth — после сопряжения через последовательный порт (`serial:COM5` или `serial:/dev/rfcomm0`)

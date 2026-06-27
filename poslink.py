@@ -4,6 +4,12 @@ import textwrap
 import requests
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
+
+try:
+    import libusb_package  # noqa: F401 — registers libusb DLL path on Windows
+except ImportError:
+    pass
+
 from escpos import printer as escpos_printer
 
 
@@ -242,13 +248,15 @@ class Poslink:
                 except ValueError:
                     pass
             return {"type": "serial", "port": rest, "baud": 9600}
+        elif fmt.startswith("win:"):
+            return {"type": "file", "path": fmt[4:]}
         elif "/" in fmt or "\\" in fmt:
             return {"type": "file", "path": fmt}
         else:
             raise ValueError(
                 f"\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430: {fmt}. "
                 "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 usb[:VID:PID], "
-                "net:HOST[:PORT], serial:PORT[:BAUD] \u0438\u043b\u0438 /path/to/device"
+                "net:HOST[:PORT], serial:PORT[:BAUD], win:PORT \u0438\u043b\u0438 /path/to/device"
             )
 
     def run(self):
@@ -279,11 +287,12 @@ def parse_args(argv=None):
               poslink --device usb "https://example.com"
               poslink --device net:192.168.1.50 "https://example.com"
               poslink --device serial:COM3:9600 -o qr.png "https://example.com"
+              poslink --device win:USB001 "https://example.com"
         """),
     )
     parser.add_argument("url", help="\u0421\u0441\u044b\u043b\u043a\u0430 \u0434\u043b\u044f \u0441\u043e\u043a\u0440\u0430\u0449\u0435\u043d\u0438\u044f")
     parser.add_argument("--device", "-d", metavar="FORMAT",
-                        help="\u0424\u043e\u0440\u043c\u0430\u0442: usb[:VID:PID] | net:HOST[:PORT] | serial:PORT[:BAUD] | /path")
+                        help="\u0424\u043e\u0440\u043c\u0430\u0442: usb[:VID:PID] | net:HOST[:PORT] | serial:PORT[:BAUD] | win:PORT | /path")
     parser.add_argument("-o", "--output", metavar="FILE",
                         help="\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c QR-\u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u0432 PNG")
     parser.add_argument("--no-print", action="store_true",
