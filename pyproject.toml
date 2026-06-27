@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poslink"
+version = "0.1.0"
+description = "Сокращение ссылок через clck.ru, генерация QR, печать на POS-принтере"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "qrcode[pil]",
+    "Pillow",
+    "python-escpos",
+]
+
+[project.scripts]
+poslink = "poslink:main"
