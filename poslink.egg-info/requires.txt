@@ -1,4 +1,0 @@
-requests
-qrcode[pil]
-Pillow
-python-escpos

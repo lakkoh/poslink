@@ -1,9 +1,0 @@
-Metadata-Version: 2.4
-Name: poslink
-Version: 0.1.0
-Summary: Сокращение ссылок через clck.ru, генерация QR, печать на POS-принтере
-Requires-Python: >=3.10
-Requires-Dist: requests
-Requires-Dist: qrcode[pil]
-Requires-Dist: Pillow
-Requires-Dist: python-escpos
