@@ -16,6 +16,7 @@ else:
         os.environ["PATH"] = _libusb_dir + os.pathsep + os.environ.get("PATH", "")
 
 from escpos import printer as escpos_printer
+from escpos.escpos import Escpos as _EscposBase
 
 
 __version__ = "0.1.0"
@@ -48,6 +49,37 @@ def _dither_rect(draw, x, y, w, h, step=4):
         for px in range(x, x + w):
             if (px + py) % (step * 2) < step:
                 draw.point((px, py), fill=0)
+
+
+class _Win32Printer(_EscposBase):
+    def __init__(self, printer_name):
+        super().__init__()
+        self._printer_name = printer_name
+        self._handle = None
+
+    def open(self):
+        if self._handle is None:
+            import win32print
+            self._handle = win32print.OpenPrinter(self._printer_name)
+
+    def _raw(self, data):
+        self.open()
+        import win32print
+        win32print.StartDocPrinter(self._handle, 1, ('poslink', None, 'RAW'))
+        win32print.WritePrinter(self._handle, data)
+        win32print.EndDocPrinter(self._handle)
+
+    def close(self):
+        if self._handle is not None:
+            try:
+                import win32print
+                win32print.ClosePrinter(self._handle)
+            except Exception:
+                pass
+            self._handle = None
+
+    def __del__(self):
+        self.close()
 
 
 class Poslink:
@@ -207,7 +239,6 @@ class Poslink:
     def _print_img(self, img):
         dev = self._get_printer()
         dev.image(img)
-        dev.cut()
 
     def _get_printer(self):
         if not self.device:
@@ -225,6 +256,15 @@ class Poslink:
                 return escpos_printer.Serial(info["port"], info.get("baud", 9600))
             elif t == "file":
                 return escpos_printer.File(info["path"])
+            elif t == "win32":
+                try:
+                    import win32print
+                except ImportError:
+                    raise RuntimeError(
+                        "win32: \u0442\u0440\u0435\u0431\u0443\u0435\u0442 pywin32: "
+                        "pip install poslink[win32]"
+                    )
+                return _Win32Printer(info["name"])
             else:
                 raise RuntimeError(f"\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0442\u0438\u043f \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430: {t}")
         except Exception as e:
@@ -253,6 +293,8 @@ class Poslink:
                 except ValueError:
                     pass
             return {"type": "serial", "port": rest, "baud": 9600}
+        elif fmt.startswith("win32:"):
+            return {"type": "win32", "name": fmt[6:]}
         elif fmt.startswith("win:"):
             return {"type": "file", "path": fmt[4:]}
         elif "/" in fmt or "\\" in fmt:
@@ -261,7 +303,7 @@ class Poslink:
             raise ValueError(
                 f"\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430: {fmt}. "
                 "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 usb[:VID:PID], "
-                "net:HOST[:PORT], serial:PORT[:BAUD], win:PORT \u0438\u043b\u0438 /path/to/device"
+                "net:HOST[:PORT], serial:PORT[:BAUD], win32:NAME, win:PORT \u0438\u043b\u0438 /path/to/device"
             )
 
     def run(self):
@@ -292,12 +334,13 @@ def parse_args(argv=None):
               poslink --device usb "https://example.com"
               poslink --device net:192.168.1.50 "https://example.com"
               poslink --device serial:COM3:9600 -o qr.png "https://example.com"
+              poslink --device "win32:Generic / Text Only" "https://example.com"
               poslink --device win:USB001 "https://example.com"
         """),
     )
     parser.add_argument("url", help="\u0421\u0441\u044b\u043b\u043a\u0430 \u0434\u043b\u044f \u0441\u043e\u043a\u0440\u0430\u0449\u0435\u043d\u0438\u044f")
     parser.add_argument("--device", "-d", metavar="FORMAT",
-                        help="\u0424\u043e\u0440\u043c\u0430\u0442: usb[:VID:PID] | net:HOST[:PORT] | serial:PORT[:BAUD] | win:PORT | /path")
+                        help="\u0424\u043e\u0440\u043c\u0430\u0442: usb[:VID:PID] | net:HOST[:PORT] | serial:PORT[:BAUD] | win32:NAME | win:PORT | /path")
     parser.add_argument("-o", "--output", metavar="FILE",
                         help="\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c QR-\u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u0432 PNG")
     parser.add_argument("--no-print", action="store_true",

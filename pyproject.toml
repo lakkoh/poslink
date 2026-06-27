@@ -17,5 +17,8 @@ dependencies = [
     "libusb-package",
 ]
 
+[project.optional-dependencies]
+win32 = ["pywin32"]
+
 [project.scripts]
 poslink = "poslink:main"

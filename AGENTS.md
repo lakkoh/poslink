@@ -148,6 +148,7 @@ class Poslink:
 | Формат | Парсинг | escpos-класс |
 |---|---|---|
 | `win:PORT` | `win:USB001` → path="USB001" | `File("USB001")` (напрямую в порт Windows) |
+| `win32:NAME` | `win32:XP-58IIH` → name="XP-58IIH" | `_Win32Printer("XP-58IIH")` (через спулер Windows) |
 | `usb` | — | `Usb(0x04b8, 0x0202)` с авто-VID/PID? |
 | `usb:VID:PID` | `usb:0416:5011` → VID=0x0416, PID=0x5011 | `Usb(0x0416, 0x5011)` |
 | `net:HOST` | `net:192.168.1.50` → host, port=9100 | `Network("192.168.1.50", 9100)` |
@@ -170,6 +171,8 @@ dependencies = [
     "pyserial",
     "libusb-package",
 ]
+
+optional-dependencies = {win32 = ["pywin32"]}
 ```
 
 Python >= 3.10.
