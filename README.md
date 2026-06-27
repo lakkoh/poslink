@@ -8,6 +8,8 @@ URL → clck.ru → короткая ссылка → QR + текст → печ
 
 ## Установка
 
+### Быстрая (из репозитория)
+
 ```bash
 git clone <repo> && cd poslink
 pip install -e .
@@ -15,9 +17,29 @@ pip install -e .
 
 После установки команда `poslink` доступна глобально.
 
+### Из локальной папки
+
+```bash
+pip install /путь/к/poslink
+```
+
+### Wheel
+
+```bash
+python -m build
+pip install dist/poslink-*.whl
+```
+
+### Без установки (просто скопировать `poslink.py`)
+
+```bash
+python poslink.py --device ... "https://..."
+```
+
 ### Зависимости
 
-Устанавливаются автоматически: `requests`, `qrcode`, `Pillow`, `python-escpos`.
+Устанавливаются автоматически: `requests`, `qrcode[pil]`, `Pillow`, `python-escpos`, `pyusb`, `pyserial`, `libusb-package`.  
+Опционально для Windows (печать через спулер): `pip install poslink[win32]` (добавит `pywin32`).
 
 ## CLI
 
@@ -46,6 +68,7 @@ poslink --device usb --no-print --label "" "https://example.com"
 | `serial:PORT` | `--device serial:COM3` | COM-порт (9600 бод) |
 | `serial:PORT:BAUD` | `--device serial:/dev/ttyUSB0:19200` | COM-порт, свой baudrate |
 | `win:PORT` | `--device win:USB001` | Прямой вывод в порт Windows (без libusb) |
+| `win32:NAME` | `--device "win32:XP-58IIH"` | Печать через спулер Windows (требуется pywin32) |
 | `/path/to/device` | `--device /dev/usb/lp0` | Файл устройства (Linux) |
 
 ### Параметры изображения
@@ -100,11 +123,12 @@ p = Poslink(
     no_scheme=True,
 )
 
-p.shorten()     # → "https://clck.ru/abc123"
-p.render()      # → PIL.Image (1-bit, ч/б)
-p.save("qr.png")
-p.print()       # печать на POS-принтер
-p.run()         # сократить → сгенерировать → напечатать/сохранить
+p.shorten()            # → "https://clck.ru/abc123"  (кешируется)
+p.render()             # → PIL.Image (1-bit, ч/б)    (берёт кеш shorten)
+p.render("https://clck.ru/abc")  # явная ссылка, без shorten
+p.save("qr.png")       # сохраняет последний рендер (или рендерит)
+p.print()              # печать на POS-принтер        (или рендерит)
+p.run()                # shorten → render → save/print/stdout
 ```
 
 ### Конструктор
@@ -134,6 +158,19 @@ Poslink(
     verbose: bool = False,
 )
 ```
+
+### Методы
+
+| Метод | Параметры | Что делает |
+|---|---|---|
+| `shorten()` | — | Один HTTP-запрос к clck.ru, результат кешируется в `_short`. При повторном вызове возвращает кеш |
+| `render(short_url=None)` | `short_url` — готовая короткая ссылка (опционально) | Генерирует QR + текст. Если `short_url` не передан, берёт из кеша `shorten()` (авто-запрос, если кеш пуст). Результат сохраняется в `_img` |
+| `save(path)` | `path` — путь к PNG | Сохраняет `_img`. Если `_img` нет — вызывает `render()` |
+| `print()` | — | Печатает на `device`. Если `_img` нет — вызывает `render()` |
+| `run()` | — | `shorten()` → `render()` → сохраняет в `output` и/или печатает на `device`. Если ничего не указано — выводит короткую ссылку в stdout |
+
+**Кеширование.** `shorten()` делает ровно один HTTP-запрос за всё время жизни объекта.  
+`render()` и `save()` и `print()` не дёргают сеть, если кеш уже заполнен.
 
 ## Макет изображения
 
@@ -167,20 +204,6 @@ Poslink.parse_device("usb:0416:5011")
 
 Poslink.parse_device("net:192.168.1.50:9101")
 # → {"type": "net", "host": "192.168.1.50", "port": 9101}
-```
-
-## Установка на другие ПК
-
-```bash
-# Вариант 1: скопировать и установить
-pip install /путь/к/poslink
-
-# Вариант 2: собрать wheel
-python -m build
-pip install dist/poslink-*.whl
-
-# Вариант 3: просто скопировать poslink.py
-python poslink.py --device ... "https://..."
 ```
 
 ## Совместимость

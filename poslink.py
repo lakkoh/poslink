@@ -109,22 +109,30 @@ class Poslink:
         self.font_size = font_size
         self.label_gap = label_gap
         self.verbose = verbose
+        self._short = None
+        self._img = None
 
     def shorten(self):
+        if self._short is not None:
+            return self._short
         if self.verbose:
-            print(f"[poslink] \u0421\u043e\u043a\u0440\u0430\u0449\u0435\u043d\u0438\u0435: {self.url}", file=sys.stderr)
+            print(f"[poslink] Сокращение: {self.url}", file=sys.stderr)
         r = requests.get("https://clck.ru/--", params={"url": self.url})
         r.raise_for_status()
-        short = r.text.strip()
+        self._short = r.text.strip()
         if self.verbose:
-            print(f"[poslink] \u041a\u043e\u0440\u043e\u0442\u043a\u0430\u044f \u0441\u0441\u044b\u043b\u043a\u0430: {short}", file=sys.stderr)
-        return short
+            print(f"[poslink] Короткая ссылка: {self._short}", file=sys.stderr)
+        return self._short
 
-    def render(self):
-        short = self.shorten()
-        qr_img = self._make_qr(short)
-        text_lines = self._get_text_lines(short)
-        return self._compose(qr_img, text_lines)
+    def render(self, short_url=None):
+        if short_url is None:
+            if self._short is None:
+                self.shorten()
+            short_url = self._short
+        qr_img = self._make_qr(short_url)
+        text_lines = self._get_text_lines(short_url)
+        self._img = self._compose(qr_img, text_lines)
+        return self._img
 
     def _make_qr(self, text):
         qr = qrcode.QRCode(box_size=self.qr_size, border=4)
@@ -234,7 +242,14 @@ class Poslink:
         return img
 
     def save(self, path):
-        self.render().save(path)
+        if self._img is None:
+            self.render()
+        self._img.save(path)
+
+    def print(self):
+        if self._img is None:
+            self.render()
+        self._print_img(self._img)
 
     def _print_img(self, img):
         dev = self._get_printer()
@@ -307,21 +322,19 @@ class Poslink:
             )
 
     def run(self):
-        short = self.shorten()
+        self.shorten()
         do_print = bool(self.device)
         do_save = bool(self.output)
         if do_save or do_print:
-            qr_img = self._make_qr(short)
-            text_lines = self._get_text_lines(short)
-            img = self._compose(qr_img, text_lines)
+            self.render()
             if do_save:
-                img.save(self.output)
+                self._img.save(self.output)
                 if self.verbose:
-                    print(f"[poslink] \u0418\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e: {self.output}", file=sys.stderr)
+                    print(f"[poslink] Изображение сохранено: {self.output}", file=sys.stderr)
             if do_print:
-                self._print_img(img)
+                self._print_img(self._img)
         else:
-            print(short)
+            print(self._short)
 
 
 def parse_args(argv=None):

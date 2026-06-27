@@ -9,7 +9,7 @@
 - Не запускай скрипты/утилиты и не редактируй AGENTS.md без согласования.
 - Не делай коммиты самостоятельно.
 - Всё согласовывай.
-- `--device` обязателен (автоопределения нет).
+- `--device` не обязателен, если указан `--output` или `--no-print`.
 
 ## Структура
 
@@ -39,14 +39,14 @@ poslink --device usb --no-print --label "" "https://example.com"
 
 | Опция | Описание |
 |---|---|
-| `--device FORMAT` | **(обязательно)** Формат: `usb[:VID:PID]`, `net:HOST[:PORT]`, `serial:PORT[:BAUD]`, `/path/to/device` |
+| `--device FORMAT` | Формат: `usb[:VID:PID]`, `net:HOST[:PORT]`, `serial:PORT[:BAUD]`, `win32:NAME`, `win:PORT`, `/path/to/device` |
 
 ### Размеры и отступы
 
 | Опция | По умолч. | Описание |
 |---|---|---|
 | `--width` | `384` | Ширина холста в px |
-| `--height` | — | Макс. высота; если не влезает → ошибка |
+| `--height` | — | Макс. высота; если не влезает → предупреждение + обрезка |
 | `--qr-size` | `6` | Размер модуля QR-кода в px |
 | `--margin` | `10` | Общий отступ от края до контента |
 | `--margin-top` | — | Переопределяет `--margin` для верха |
@@ -95,20 +95,22 @@ class Poslink:
 
     def shorten(self) -> str
         # GET https://clck.ru/--?url=... → response.text
-        # Возвращает короткую ссылку
+        # Кешируется в self._short, повторные вызовы без HTTP
 
-    def render(self) -> Image.Image
+    def render(self, short_url: str | None = None) -> Image.Image
         # Генерирует PIL Image (1-bit, ч/б)
-        # Если height задан и контент не влезает → RuntimeError
+        # Если short_url передан — использует его; иначе берёт из кеша shorten()
+        # Результат кешируется в self._img
+        # Если height задан и контент не влезает → предупреждение + обрезка
 
     def save(self, path: str)
-        # self.render().save(path)
+        # Сохраняет self._img (если None → вызывает render())
 
     def print(self)
-        # self.render() → масштаб (принтер) → escpos.print_image()
+        # self._print_img(self._img); если None → вызывает render()
 
     def run(self)
-        # shorten() → render() → print() / save() / stdout
+        # shorten() → render() → save() / print() / stdout
 ```
 
 ## Макет изображения
@@ -136,7 +138,7 @@ class Poslink:
 1. Белый фон
 2. Пунктирная рамка (если `--cut-frame`)
 3. QR-код (чёрный по белому, центрирован)
-4. Подложка под текст (если `--label-chip`, серый фон с rounded rect)
+4. Подложка под текст (если `--label-chip`, серая дизеринг-заливка)
 5. Текст (label + URL, центрирован)
 
 ## Если контент не влезает в `--height`
