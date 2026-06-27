@@ -6,9 +6,14 @@ import qrcode
 from PIL import Image, ImageDraw, ImageFont
 
 try:
-    import libusb_package  # noqa: F401 — registers libusb DLL path on Windows
+    import libusb_package
 except ImportError:
     pass
+else:
+    import os
+    _libusb_dir = os.path.dirname(libusb_package.__file__)
+    if _libusb_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _libusb_dir + os.pathsep + os.environ.get("PATH", "")
 
 from escpos import printer as escpos_printer
 
